@@ -4,6 +4,8 @@ import path from "path";
 import logger from "./utils/logger";
 import swaggerUi from "swagger-ui-express";
 import { swaggerSpec } from "./utils/swagger";
+import cookieParser from "cookie-parser";
+import authRouter from "./routes/auth";
 
 const rootEnvPath = path.resolve(__dirname, "../../../.env");
 dotenv.config({ path: rootEnvPath });
@@ -59,6 +61,47 @@ app.use(
 );
 
 app.use(express.json({ limit: "1mb" }));
+app.use(cookieParser());
+
+// ── CSRF Protection ───────────────────────────────────────────────────────────
+import { doubleCsrf } from "csrf-csrf";
+
+// Destructured generateToken to use inside the token endpoint
+const { doubleCsrfProtection, generateToken } = doubleCsrf({
+    getSecret: () => process.env.JWT_SECRET ?? "csrf-secret-fallback",
+    cookieName: "sahidawa.x-csrf-token",
+    cookieOptions: {
+        httpOnly: true,
+        sameSite: "strict",
+        secure: process.env.NODE_ENV === "production",
+    },
+    size: 64,
+    getTokenFromRequest: (req) =>
+        (req.headers["x-csrf-token"] as string) ?? "",
+});
+
+// Apply CSRF to all state-changing routes except auth/login
+// (login is exempt because the client doesn't have a CSRF token yet)
+app.use((req, res, next) => {
+    const exemptPaths = ["/api/auth/login", "/api/docs", "/api/docs.json", "/health", "/api/csrf-token"];
+    if (
+        req.method === "GET" ||
+        req.method === "HEAD" ||
+        req.method === "OPTIONS" ||
+        exemptPaths.some((p) => req.path.startsWith(p))
+    ) {
+        return next();
+    }
+    return doubleCsrfProtection(req, res, next);
+});
+
+// Expose CSRF token to clients via GET endpoint
+app.get("/api/csrf-token", (req: Request, res: Response) => {
+    // Correctly generates a new token and sets the cookie
+    const csrfToken = generateToken(req, res);
+    res.json({ csrfToken });
+});
+
 app.use(limiter);
 
 app.use(
@@ -119,6 +162,7 @@ app.use("/api/analytics", analyticsRoutes);
 app.use("/api/notifications", notificationsRouter);
 app.use("/api/v1/scan", scanRouter);
 app.use("/api/v1/alerts", alertsRouter);
+app.use("/api/auth", authRouter);
 
 // ── Swagger UI (/api/docs) ──────────────────────────────────────────────────
 app.use(
