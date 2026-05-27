@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { useTranslations } from "next-intl";
 import { Mail, MessageCircle, Bug, Handshake } from "lucide-react";
+export const dynamic = 'force-dynamic'; 
 
 const CONTACT_EMAIL = process.env.NEXT_PUBLIC_CONTACT_EMAIL ?? "contact@sahidawa.in";
 const DISCORD_URL = "https://discord.gg/dvbDuJVwNa";

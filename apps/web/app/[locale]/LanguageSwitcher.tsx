@@ -6,10 +6,13 @@ import { Globe, ChevronDown } from "lucide-react";
 import { useState, useRef, useEffect } from "react";
 
 const languages = [
-  { code: "en", label: "English", native: "English" },
-  { code: "ta", label: "Tamil", native: "தமிழ்" },
-  { code: "bn", label: "Bengali", native: "বাংলা" },
-  { code: "te", label: "Telugu", native: "తెలుగు" }
+  { code: "en", label: "English",   native: "English" },
+  { code: "hi", label: "Hindi",     native: "हिंदी" },
+  { code: "gu", label: "Gujarati",  native: "ગુજરાતી" },
+  { code: "ta", label: "Tamil",     native: "தமிழ்" },
+  { code: "bn", label: "Bengali",   native: "বাংলা" },
+  { code: "mr", label: "Marathi",   native: "मराठी" },
+  { code: "te", label: "Telugu",    native: "తెలుగు" },
 ];
 
 export default function LanguageSwitcher() {
