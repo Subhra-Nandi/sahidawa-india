@@ -15,6 +15,7 @@ import "./globals.css";
 import "../../src/styles/print.css";
 import { Toaster } from "sonner";
 import Footer from "./components/Footer";
+import { AuthProvider } from "@/components/AuthProvider";
 
 export const metadata: Metadata = {
     title: "SahiDawa — Verify Your Medicine",
@@ -66,16 +67,16 @@ export default async function LocaleLayout({
                 <ServiceWorkerProvider>
                     <ThemeProvider>
                         <NextIntlClientProvider messages={messages}>
-                            <OfflineBanner />
-                            <Navbar />
-                            <main className="flex flex-grow flex-col">
-                                <OfflineErrorBoundary>{children}</OfflineErrorBoundary>
-                            </main>
-                            <Footer />
-                            <div className="no-print">
-                                <BackToTopButton />
-                                <Chatbot />
-                            </div>
+                            <AuthProvider>
+                                <OfflineErrorBoundary>
+                                    <OfflineBanner />
+                                    {children}
+                                    <Footer />
+                                    <div className="no-print">
+                                        <Chatbot />
+                                    </div>
+                                </OfflineErrorBoundary>
+                            </AuthProvider>
                         </NextIntlClientProvider>
                         <div className="no-print">
                             <Toaster richColors position="top-center" />

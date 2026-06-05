@@ -9,6 +9,8 @@ import { useTranslations } from "next-intl";
 import LanguageSwitcher from "../LanguageSwitcher";
 import { ThemeToggle } from "./ThemeToggle";
 import type { FC } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import { LogOut } from "lucide-react";
 
 const desktopNavLinkClassName =
     "relative inline-flex items-center pb-1 transition-colors duration-200 ease-out hover:text-emerald-600 focus-visible:text-emerald-600 after:absolute after:inset-x-0 after:-bottom-0.5 after:h-0.5 after:origin-center after:scale-x-0 after:rounded-full after:bg-current after:transition-transform after:duration-300 after:ease-out hover:after:scale-x-100 focus-visible:after:scale-x-100 motion-safe:after:will-change-transform";
@@ -77,6 +79,13 @@ export default function Navbar() {
     const locale = Array.isArray(params.locale) ? params.locale[0] : params.locale;
     const tHome = useTranslations("Home");
     const tNav = useTranslations("Navigation");
+
+    const { user, signOut, loading: authLoading } = useAuth();
+
+    const handleLogout = async () => {
+        await signOut();
+        router.push(`/${locale}/login`);
+    };
 
     // ── Scroll-hide logic (mirrors BackToTopButton pattern) ──
     const [isNavVisible, setIsNavVisible] = useState(true);
@@ -194,24 +203,51 @@ export default function Navbar() {
 
                         <ThemeToggle />
 
-                        <button
-                            onClick={() => handleNavigation("login")}
-                            className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-50/70 text-emerald-700 transition-all duration-200 hover:scale-105 hover:border-emerald-500/50 hover:bg-emerald-100 sm:hidden dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                            aria-label={tHome("sign_in")}
-                            title={tHome("sign_in")}
-                        >
-                            <User size={17} />
-                            <span className="sr-only">{tHome("sign_in")}</span>
-                        </button>
+                        {!authLoading && (
+                            user ? (
+                                <button
+                                    onClick={handleLogout}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-red-500/30 bg-red-50/70 text-red-600 transition-all duration-200 hover:scale-105 hover:bg-red-100 sm:hidden dark:bg-red-500/10 dark:text-red-400"
+                                    aria-label="Sign out"
+                                    title="Sign out"
+                                >
+                                    <LogOut size={17} />
+                                    <span className="sr-only">Sign out</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => handleNavigation("login")}
+                                    className="flex h-9 w-9 items-center justify-center rounded-full border border-emerald-500/30 bg-emerald-50/70 text-emerald-700 transition-all duration-200 hover:scale-105 hover:border-emerald-500/50 hover:bg-emerald-100 sm:hidden dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                                    aria-label={tHome("sign_in")}
+                                    title={tHome("sign_in")}
+                                >
+                                    <User size={17} />
+                                    <span className="sr-only">{tHome("sign_in")}</span>
+                                </button>
+                            )
+                        )}
 
-                        <button
-                            onClick={() => handleNavigation("login")}
-                            className="hidden h-9 items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50/50 px-4 py-1.5 text-sm font-bold text-emerald-700 transition-all duration-200 hover:scale-105 hover:border-emerald-500/50 hover:bg-emerald-100 sm:flex sm:h-10 sm:px-5 sm:py-2 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-                            aria-label={tHome("sign_in")}
-                        >
-                            <User size={16} />
-                            <span>{tHome("sign_in")}</span>
-                        </button>
+                        {!authLoading && (
+                            user ? (
+                                <button
+                                    onClick={handleLogout}
+                                    className="hidden h-9 items-center justify-center gap-2 rounded-full border border-red-500/30 bg-red-50/50 px-4 py-1.5 text-sm font-bold text-red-600 transition-all duration-200 hover:scale-105 hover:bg-red-100 sm:flex sm:h-10 sm:px-5 sm:py-2 dark:bg-red-500/10 dark:text-red-400"
+                                    aria-label="Sign out"
+                                >
+                                    <LogOut size={16} />
+                                    <span>Sign Out</span>
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={() => handleNavigation("login")}
+                                    className="hidden h-9 items-center justify-center gap-2 rounded-full border border-emerald-500/30 bg-emerald-50/50 px-4 py-1.5 text-sm font-bold text-emerald-700 transition-all duration-200 hover:scale-105 hover:border-emerald-500/50 hover:bg-emerald-100 sm:flex sm:h-10 sm:px-5 sm:py-2 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+                                    aria-label={tHome("sign_in")}
+                                >
+                                    <User size={16} />
+                                    <span>{tHome("sign_in")}</span>
+                                </button>
+                            )
+                        )}
                     </div>
                 </div>
             </header>
