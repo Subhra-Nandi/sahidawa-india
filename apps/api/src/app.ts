@@ -7,6 +7,7 @@ import { swaggerSpec } from "./utils/swagger";
 import { validateMlServiceConfig } from "./config/mlService";
 import cookieParser from "cookie-parser";
 import { doubleCsrf } from "csrf-csrf";
+import mapRouter from "./routes/map";
 
 // ── Environment Configuration ──────────────────────────────────────────────
 const rootEnvPath = path.resolve(__dirname, "../../../.env");
@@ -53,6 +54,7 @@ import { errorHandler } from "./middleware/errorHandler";
 
 // ── Application Initialization ─────────────────────────────────────────────
 const app: Express = express();
+app.set("trust proxy", 1); // Trust first proxy (Nginx) — fixes req.ip for rate limiters
 
 app.use(compression());
 
@@ -61,15 +63,16 @@ app.use(cookieParser());
 
 // ── CSRF Protection (double-submit cookie pattern) ─────────────────────────
 // csrf-csrf is recognized by CodeQL as a valid CSRF defense unlike custom header checks.
-const { 
-    doubleCsrfProtection, 
-    generateCsrfToken: generateToken // FIXED: Extract generateCsrfToken and alias it to generateToken
+const {
+    doubleCsrfProtection,
+    generateCsrfToken: generateToken, // FIXED: Extract generateCsrfToken and alias it to generateToken
 } = doubleCsrf({
     getSecret: () => process.env.CSRF_SECRET || "fallback-secret-change-in-production",
     getSessionIdentifier: (req: Request) => {
         return req.cookies?.access_token || "anonymous-session";
     },
-    cookieName: "__Host-psifi.x-csrf-token",
+    cookieName:
+        process.env.NODE_ENV === "production" ? "__Host-psifi.x-csrf-token" : "psifi.x-csrf-token",
     cookieOptions: {
         httpOnly: true,
         sameSite: "strict",
@@ -161,18 +164,24 @@ app.get("/health", async (_req: Request, res: Response) => {
         };
 
         if (error) {
+            logger.error("Health check database failure", { error });
             return res.status(503).json({
                 ...healthData,
-                database: { status: "unreachable", error: error.message },
+                database: {
+                    status: "unreachable",
+                    error: "Database connection failed",
+                },
             });
         }
 
         return res.status(200).json(healthData);
     } catch (err) {
+        const errorMessage = err instanceof Error ? err.message : "Unknown error";
+        logger.error("Health check error", { error: err, errorMessage });
         return res.status(500).json({
             status: "error",
             service: "sahidawa-api",
-            error: err instanceof Error ? err.message : "Unknown error",
+            error: "Service health check failed",
             timestamp: new Date().toISOString(),
         });
     }
@@ -190,6 +199,7 @@ app.use("/api/v1/scan", scanRouter);
 app.use("/api/v1/lasa", lasaRouter);
 app.use("/api/v1/alerts", alertsRouter);
 app.use("/api/ml", mlRouter);
+app.use("/api/map", mapRouter);
 
 // ── Swagger UI Documentation (/api/docs) ──────────────────────────────────
 app.use(

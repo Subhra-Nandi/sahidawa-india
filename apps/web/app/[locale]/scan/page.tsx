@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import { SkeletonLoader } from "@/components/scanner/SkeletonLoader";
 import {
     Camera,
     ShieldCheck,
@@ -45,6 +46,7 @@ import {
 import { useOfflineStatus } from "@/hooks/useOfflineStatus";
 import { useTranslations } from "next-intl";
 import { buildVerificationShareText, type VerificationShareCopy } from "@/lib/verificationShare";
+import { structuredLog as logger } from "@/lib/structuredLogger";
 
 function formatExpiryForBadge(isoDate: string | null | undefined): string | undefined {
     if (!isoDate) return undefined;
@@ -179,6 +181,7 @@ function LoadingSkeleton({ ocrStatus, ocrProgress }: { ocrStatus: string; ocrPro
 // Result views with dark/light mode surface tokens and variables support
 function VerifiedSafeResult({
     medicine,
+    scanMeta,
     onScanAgain,
     onShare,
     onCopyMedicineDetails,
@@ -186,6 +189,12 @@ function VerifiedSafeResult({
     copied,
 }: {
     medicine: VerifiedMedicine;
+    scanMeta?: {
+        recentScanCount24h: number;
+        recentScanCount7d: number;
+        suspicious: boolean;
+        suspicionReasons: string[];
+    };
     onScanAgain: () => void;
     onShare: () => void;
     onCopyMedicineDetails: () => void;
@@ -207,6 +216,18 @@ function VerifiedSafeResult({
                 </div>
 
                 <CdscoStatusBadge status={medicine.cdsco_approval_status} />
+
+                {scanMeta?.suspicious && (
+                    <div className="border-amber-250 flex w-full items-start gap-3 rounded-2xl border bg-amber-50 p-4 text-left dark:border-amber-900 dark:bg-amber-950/20">
+                        <AlertTriangle
+                            size={18}
+                            className="mt-0.5 shrink-0 text-amber-600 dark:text-amber-400"
+                        />
+                        <p className="text-xs leading-relaxed font-medium text-amber-800 dark:text-amber-400">
+                            {scanMeta.suspicionReasons.join(" ")}
+                        </p>
+                    </div>
+                )}
 
                 <div className="grid w-full grid-cols-2 gap-3 pt-2">
                     <div className="rounded-2xl border border-(--color-border-muted) bg-(--color-surface-muted) p-3">
@@ -811,8 +832,10 @@ export default function ScanPage() {
                     await handleVerify(barcodeText);
                     return;
                 }
-            } catch {
-                // ZXing failed — continue to OCR fallback
+            } catch (error) {
+                logger.warn("[scan] Barcode detection (ZXing) failed, falling back to OCR", {
+                    error: error instanceof Error ? error.message : String(error),
+                });
             }
 
             if (!isMountedRef.current || controller.signal.aborted) return;
@@ -884,8 +907,11 @@ export default function ScanPage() {
                     if (batchRes.verified) {
                         finalResult = batchRes;
                     }
-                } catch {
-                    // Silent fallback
+                } catch (error) {
+                    logger.warn("[scan] Batch verification failed, trying brand match", {
+                        batch: parsedBatchNum,
+                        error: error instanceof Error ? error.message : String(error),
+                    });
                 }
             }
 
@@ -907,8 +933,11 @@ export default function ScanPage() {
                             }
                         }
                     }
-                } catch {
-                    // Silent fallback
+                } catch (error) {
+                    logger.warn("[scan] Fuzzy brand match verification failed", {
+                        brand: medName,
+                        error: error instanceof Error ? error.message : String(error),
+                    });
                 }
             }
 
@@ -963,7 +992,19 @@ export default function ScanPage() {
             }
         }
     };
-
+    const handleCameraPermissionDenied = useCallback(() => {
+        setIsCameraActive(false);
+        toast.error("Camera access denied. Please enter batch number manually.", {
+            duration: 4000,
+        });
+        // Auto focus batch input
+        setTimeout(() => {
+            const input = document.querySelector(
+                'input[placeholder="Enter batch number"]'
+            ) as HTMLInputElement;
+            input?.focus();
+        }, 300);
+    }, []);
     const handleBarcodeScan = async (scannedText: string) => {
         setIsVerifying(true);
         setApiError(null);
@@ -1075,7 +1116,11 @@ export default function ScanPage() {
                             debounceMs={2500}
                             isVerifying={isVerifying}
                             apiError={apiError}
-                            onRetry={() => setApiError(null)}
+                            onRetry={() => {
+                                setApiError(null);
+                                setIsCameraActive(false);
+                            }}
+                            onPermissionDenied={handleCameraPermissionDenied}
                         />
                     ) : uploadedImage ? (
                         <LazyImage
@@ -1109,7 +1154,7 @@ export default function ScanPage() {
                     )}
                 </div>
 
-                {isScanning && <LoadingSkeleton ocrStatus={ocrStatus} ocrProgress={ocrProgress} />}
+                {isScanning && <SkeletonLoader />}
 
                 {showResult && (
                     <div className="animate-in fade-in zoom-in absolute inset-0 z-30 flex items-center justify-center bg-black/60 p-6 backdrop-blur-sm duration-300">
@@ -1156,6 +1201,7 @@ export default function ScanPage() {
                                     !verifyResult.medicine.is_counterfeit_alert && (
                                         <VerifiedSafeResult
                                             medicine={verifyResult.medicine}
+                                            scanMeta={verifyResult.scanMeta}
                                             onScanAgain={handleScanAgain}
                                             onShare={handleShare}
                                             onCopyMedicineDetails={handleCopyMedicineDetails}
