@@ -8,6 +8,14 @@ jest.mock("@google/genai", () => ({
             generateContentStream: generateContentStreamMock,
         },
     })),
+    Type: {
+        OBJECT: "OBJECT",
+        STRING: "STRING",
+        ARRAY: "ARRAY",
+        BOOLEAN: "BOOLEAN",
+        INTEGER: "INTEGER",
+        NUMBER: "NUMBER",
+    },
 }));
 
 import { POST } from "../app/api/chat/route";

@@ -26,8 +26,12 @@
 - [ ] ✨ `type: feature`
 - [ ] 📖 `type: docs`
 - [ ] 🧪 `type: testing`
+- [ ] 🔒 `type: security`
+- [ ] ⚡ `type: performance`
+- [ ] 🎨 `type: design`
 - [ ] ♻️ `type: refactor`
-- [ ] 🌏 `type: translation`
+- [ ] 🛠️ `type: devops`
+- [ ] ♿ `type: accessibility`
 
 ## ✅ Checklist
 

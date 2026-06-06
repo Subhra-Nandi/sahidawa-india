@@ -19,7 +19,7 @@ async function getCsrfToken(): Promise<string> {
         throw new Error("CSRF token not found in response body");
     }
     csrfTokenCache = data.csrfToken;
-    return csrfTokenCache;
+    return csrfTokenCache!;
 }
 
 export type ReportPayload = {
